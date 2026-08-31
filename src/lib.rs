@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![deny(missing_docs)]
 
 //! Type-safe JWT encode/decode for Rust with configurable validation,
 //! secret rotation, key rotation, and revocation support.
@@ -19,7 +20,7 @@
 //!
 //! let config = JwtConfig {
 //!     algorithm: JwtAlgorithm::HS256,
-//!     secret: "my-secret-key".to_string(),
+//!     secret: zeroize::Zeroizing::new("my-secret-key".to_string()),
 //!     issuer: Some("my-app".to_string()),
 //!     ..Default::default()
 //! };
@@ -36,9 +37,13 @@
 //! assert_eq!(decoded.sub.as_deref(), Some("user-123"));
 //! ```
 
+/// JWT claims types.
 pub mod claims;
+/// Error types.
 pub mod error;
+/// Extractors for HTTP authorization headers and cookies.
 pub mod extractors;
+/// JWT service for encoding, decoding, and validation.
 pub mod service;
 
 #[cfg(feature = "revocation")]
@@ -78,7 +83,7 @@ mod tests {
     #[test]
     fn jwt_config_short_secret_works_for_hmac() {
         let config = JwtConfig {
-            secret: "ab".to_string(),
+            secret: zeroize::Zeroizing::new("ab".to_string()),
             issuer: Some("test-issuer".to_string()),
             ..Default::default()
         };
@@ -97,7 +102,7 @@ mod tests {
     #[test]
     fn jwt_service_encode_decode_roundtrip() {
         let config = JwtConfig {
-            secret: "a-valid-secret-key-for-testing".to_string(),
+            secret: zeroize::Zeroizing::new("a-valid-secret-key-for-testing".to_string()),
             issuer: Some("test-issuer".to_string()),
             ..Default::default()
         };
@@ -120,7 +125,7 @@ mod tests {
     #[test]
     fn jwt_service_encode_decode_with_issuer_audience() {
         let config = JwtConfig {
-            secret: "test-secret-key-123".to_string(),
+            secret: zeroize::Zeroizing::new("test-secret-key-123".to_string()),
             issuer: Some("test-issuer".to_string()),
             audience: Some("test-audience".to_string()),
             ..Default::default()
@@ -143,11 +148,11 @@ mod tests {
     #[test]
     fn jwt_service_wrong_secret_fails() {
         let config1 = JwtConfig {
-            secret: "secret-one".to_string(),
+            secret: zeroize::Zeroizing::new("secret-one".to_string()),
             ..Default::default()
         };
         let config2 = JwtConfig {
-            secret: "secret-two".to_string(),
+            secret: zeroize::Zeroizing::new("secret-two".to_string()),
             ..Default::default()
         };
         let service1 = JwtService::new(config1);
@@ -258,19 +263,13 @@ mod tests {
 
     #[test]
     fn jwt_error_display_messages() {
-        assert_eq!(
-            JwtError::EncodingFailed.to_string(),
-            "failed to encode JWT"
-        );
+        assert_eq!(JwtError::EncodingFailed.to_string(), "failed to encode JWT");
         assert_eq!(
             JwtError::DecodingFailed("bad".to_string()).to_string(),
             "failed to decode JWT: bad"
         );
         assert_eq!(JwtError::Expired.to_string(), "token has expired");
-        assert_eq!(
-            JwtError::InvalidSignature.to_string(),
-            "invalid signature"
-        );
+        assert_eq!(JwtError::InvalidSignature.to_string(), "invalid signature");
         assert_eq!(JwtError::Revoked.to_string(), "token has been revoked");
         assert_eq!(
             JwtError::InvalidSecret("weak".to_string()).to_string(),
@@ -280,5 +279,114 @@ mod tests {
             JwtError::KeyLoading("pem err".to_string()).to_string(),
             "failed to load signing key: pem err"
         );
+    }
+}
+
+#[cfg(test)]
+mod proptest_tests {
+    use super::service::{JwtConfig, JwtService};
+    use proptest::prelude::*;
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    struct NumericClaims {
+        sub: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        exp: Option<u64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        iss: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        aud: Option<String>,
+    }
+
+    fn arb_standard_claims() -> impl Strategy<Value = super::claims::StandardClaims> {
+        (
+            prop::option::of("[a-z0-9_-]{1,20}"),
+            prop::option::of("[a-z0-9_-]{1,20}"),
+            prop::option::of("[a-z]{1,10}"),
+            prop::collection::vec("[a-z]{1,10}", 0..5),
+        )
+            .prop_map(
+                |(sub, aud, role, permissions)| super::claims::StandardClaims {
+                    sub,
+                    iss: None,
+                    aud,
+                    exp: None,
+                    iat: None,
+                    jti: None,
+                    role,
+                    permissions,
+                    extra: std::collections::HashMap::new(),
+                },
+            )
+    }
+
+    proptest! {
+        #[test]
+        fn jwt_roundtrip(sub in "[a-z0-9_-]{1,20}") {
+            let config = JwtConfig {
+                secret: zeroize::Zeroizing::new("test-secret-key-12345".to_string()),
+                issuer: Some("test-issuer".to_string()),
+                ..Default::default()
+            };
+            let service = JwtService::new(config);
+            let claims = NumericClaims {
+                sub: Some(sub.clone()),
+                exp: Some(chrono::Utc::now().timestamp() as u64 + 3600),
+                iss: Some("test-issuer".to_string()),
+                aud: None,
+            };
+            let token = service.encode(&claims).unwrap();
+            let decoded: NumericClaims = service.decode(&token).unwrap();
+            prop_assert_eq!(decoded.sub.as_deref(), Some(sub.as_str()));
+            prop_assert_eq!(decoded.iss.as_deref(), Some("test-issuer"));
+        }
+
+        #[test]
+        fn jwt_wrong_secret_fails(iss in "[a-z0-9_-]{1,20}") {
+            let config1 = JwtConfig {
+                secret: zeroize::Zeroizing::new("secret-one-for-testing".to_string()),
+                issuer: Some(iss.clone()),
+                ..Default::default()
+            };
+            let config2 = JwtConfig {
+                secret: zeroize::Zeroizing::new("secret-two-for-testing".to_string()),
+                issuer: Some(iss),
+                ..Default::default()
+            };
+            let service1 = JwtService::new(config1);
+            let service2 = JwtService::new(config2);
+            let claims = NumericClaims {
+                sub: Some("user-1".to_string()),
+                exp: Some(chrono::Utc::now().timestamp() as u64 + 3600),
+                iss: None,
+                aud: None,
+            };
+            let token = service1.encode(&claims).unwrap();
+            let result = service2.decode::<NumericClaims>(&token);
+            prop_assert!(result.is_err());
+        }
+
+        #[test]
+        fn jwt_malformed_token_fails(data in "\\PC{1,500}") {
+            let config = JwtConfig {
+                secret: zeroize::Zeroizing::new("a-valid-secret".to_string()),
+                ..Default::default()
+            };
+            let service = JwtService::new(config);
+            let result = service.decode::<NumericClaims>(&data);
+            prop_assert!(result.is_err());
+        }
+
+        #[test]
+        fn claims_serialization_roundtrip(claims in arb_standard_claims()) {
+            let json = serde_json::to_string(&claims).unwrap();
+            let deserialized: super::claims::StandardClaims = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(deserialized.sub, claims.sub);
+            prop_assert_eq!(deserialized.iss, claims.iss);
+            prop_assert_eq!(deserialized.aud, claims.aud);
+            prop_assert_eq!(deserialized.role, claims.role);
+            prop_assert_eq!(deserialized.permissions, claims.permissions);
+        }
     }
 }
