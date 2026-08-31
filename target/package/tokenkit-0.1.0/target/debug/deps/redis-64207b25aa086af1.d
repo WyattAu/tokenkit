@@ -1,0 +1,20 @@
+/home/wyatt/dev/src/github.com/WyattAu/tokenkit/target/debug/deps/redis-64207b25aa086af1.d: /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/lib.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/macros.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/pipeline.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/acl.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/geo.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/streams.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/client.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/cmd.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/commands/mod.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/commands/macros.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/connection.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/parser.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/script.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/types.rs
+
+/home/wyatt/dev/src/github.com/WyattAu/tokenkit/target/debug/deps/libredis-64207b25aa086af1.rmeta: /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/lib.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/macros.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/pipeline.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/acl.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/geo.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/streams.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/client.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/cmd.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/commands/mod.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/commands/macros.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/connection.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/parser.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/script.rs /home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/types.rs
+
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/lib.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/macros.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/pipeline.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/acl.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/geo.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/streams.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/client.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/cmd.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/commands/mod.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/commands/macros.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/connection.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/parser.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/script.rs:
+/home/wyatt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/redis-0.25.5/src/types.rs:
+
+# env-dep:CARGO_PKG_VERSION=0.25.5
