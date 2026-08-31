@@ -48,3 +48,52 @@ impl TokenRevocationStore for InMemoryRevocationStore {
         Ok(self.revoked.read().await.contains(jti))
     }
 }
+
+/// Redis-backed token revocation store.
+///
+/// Uses `SETEX` with a TTL so revoked tokens expire automatically.
+/// Requires the `revocation-redis` feature.
+#[cfg(feature = "revocation-redis")]
+pub struct RedisRevocationStore {
+    client: redis::Client,
+    /// TTL in seconds for revoked token entries.
+    ttl: u64,
+}
+
+#[cfg(feature = "revocation-redis")]
+impl RedisRevocationStore {
+    /// Create a new Redis revocation store.
+    ///
+    /// * `redis_url` - Redis connection string (e.g. `redis://127.0.0.1/`).
+    /// * `ttl` - Time-to-live in seconds for revoked entries.
+    pub fn new(redis_url: &str, ttl: u64) -> Result<Self, redis::RedisError> {
+        let client = redis::Client::open(redis_url)?;
+        Ok(Self { client, ttl })
+    }
+
+    fn connection(&self) -> Result<redis::Connection, redis::RedisError> {
+        self.client.get_connection()
+    }
+}
+
+#[cfg(feature = "revocation-redis")]
+#[async_trait::async_trait]
+impl TokenRevocationStore for RedisRevocationStore {
+    async fn revoke(&self, jti: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.connection()?;
+        redis::cmd("SETEX")
+            .arg(jti)
+            .arg(self.ttl)
+            .arg("1")
+            .execute(&mut conn);
+        Ok(())
+    }
+
+    async fn is_revoked(&self, jti: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.connection()?;
+        let exists: bool = redis::cmd("EXISTS")
+            .arg(jti)
+            .query(&mut conn)?;
+        Ok(exists)
+    }
+}

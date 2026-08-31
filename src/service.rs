@@ -47,6 +47,35 @@ pub struct JwtConfig {
     pub access_token_ttl: i64,
     /// Refresh token time-to-live in seconds.
     pub refresh_token_ttl: i64,
+    /// Optional key ID for the current signing key (used in `kid` header).
+    #[cfg(feature = "rotation")]
+    pub key_id: Option<String>,
+    /// Additional secrets for key rotation. `decode()` tries each secret
+    /// until one succeeds. The first secret in this list (plus `secret`)
+    /// is used for encoding.
+    #[cfg(feature = "rotation")]
+    pub rotation_secrets: Vec<String>,
+}
+
+impl JwtConfig {
+    /// Create a config with rotation support, using multiple secrets.
+    ///
+    /// The first secret in `secrets` becomes the active signing key.
+    /// All secrets are tried during decoding.
+    #[cfg(feature = "rotation")]
+    pub fn with_rotation_secrets(algorithm: JwtAlgorithm, secrets: Vec<String>) -> Self {
+        let primary = secrets.first().cloned().unwrap_or_default();
+        Self {
+            algorithm,
+            secret: primary,
+            issuer: None,
+            audience: None,
+            access_token_ttl: 3600,
+            refresh_token_ttl: 604800,
+            key_id: None,
+            rotation_secrets: secrets,
+        }
+    }
 }
 
 impl Default for JwtConfig {
@@ -56,8 +85,12 @@ impl Default for JwtConfig {
             secret: String::new(),
             issuer: None,
             audience: None,
-            access_token_ttl: 3600,      // 1 hour
-            refresh_token_ttl: 604800,   // 7 days
+            access_token_ttl: 3600,
+            refresh_token_ttl: 604800,
+            #[cfg(feature = "rotation")]
+            key_id: None,
+            #[cfg(feature = "rotation")]
+            rotation_secrets: Vec::new(),
         }
     }
 }
@@ -88,12 +121,21 @@ impl JwtService {
 
     /// Encode a custom claims struct into a JWT string.
     pub fn encode<T: serde::Serialize>(&self, claims: &T) -> Result<String, JwtError> {
+        #[cfg(feature = "rotation")]
+        let header = {
+            let mut h = Header::new(self.config.algorithm.into());
+            h.kid = self.config.key_id.clone();
+            h
+        };
+        #[cfg(not(feature = "rotation"))]
         let header = Header::new(self.config.algorithm.into());
         let key = self.encoding_key()?;
         encode(&header, claims, &key).map_err(|_| JwtError::EncodingFailed)
     }
 
     /// Decode a JWT string into a generic claims struct.
+    ///
+    /// With the `rotation` feature, tries all configured secrets until one succeeds.
     pub fn decode<T: serde::de::DeserializeOwned>(&self, token: &str) -> Result<T, JwtError> {
         let mut validation = Validation::new(self.config.algorithm.into());
         validation.set_required_spec_claims(&["exp", "iss"]);
@@ -106,10 +148,26 @@ impl JwtService {
             validation.set_audience(&[audience.clone()]);
         }
 
-        let key = self.decoding_key()?;
-        decode::<T>(token, &key, &validation)
-            .map(|data| data.claims)
-            .map_err(|e| JwtError::DecodingFailed(e.to_string()))
+        #[cfg(feature = "rotation")]
+        {
+            let keys = self.decoding_keys()?;
+            let mut last_err = JwtError::DecodingFailed("no keys configured".to_string());
+            for key in &keys {
+                match decode::<T>(token, key, &validation) {
+                    Ok(data) => return Ok(data.claims),
+                    Err(e) => last_err = JwtError::DecodingFailed(e.to_string()),
+                }
+            }
+            Err(last_err)
+        }
+
+        #[cfg(not(feature = "rotation"))]
+        {
+            let key = self.decoding_key()?;
+            decode::<T>(token, &key, &validation)
+                .map(|data| data.claims)
+                .map_err(|e| JwtError::DecodingFailed(e.to_string()))
+        }
     }
 
     /// Encode standard claims into a JWT access token.
@@ -172,6 +230,7 @@ impl JwtService {
         }
     }
 
+    #[cfg(not(feature = "rotation"))]
     fn decoding_key(&self) -> Result<DecodingKey, JwtError> {
         match self.config.algorithm {
             JwtAlgorithm::HS256 | JwtAlgorithm::HS384 | JwtAlgorithm::HS512 => {
@@ -182,5 +241,25 @@ impl JwtService {
                     .map_err(|e| JwtError::KeyLoading(e.to_string()))
             }
         }
+    }
+
+    /// Build all decoding keys: primary secret + rotation secrets.
+    #[cfg(feature = "rotation")]
+    fn decoding_keys(&self) -> Result<Vec<DecodingKey>, JwtError> {
+        let mut all_secrets = vec![self.config.secret.clone()];
+        all_secrets.extend(self.config.rotation_secrets.iter().cloned());
+
+        all_secrets
+            .into_iter()
+            .map(|s| match self.config.algorithm {
+                JwtAlgorithm::HS256 | JwtAlgorithm::HS384 | JwtAlgorithm::HS512 => {
+                    Ok(DecodingKey::from_secret(s.as_bytes()))
+                }
+                JwtAlgorithm::RS256 | JwtAlgorithm::RS384 | JwtAlgorithm::RS512 => {
+                    DecodingKey::from_rsa_pem(s.as_bytes())
+                        .map_err(|e| JwtError::KeyLoading(e.to_string()))
+                }
+            })
+            .collect()
     }
 }
