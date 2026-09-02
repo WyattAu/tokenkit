@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/WyattAu/tokenkit"
 keywords = ["jwt", "token", "authentication", "jwk", "security"]
 categories = ["authentication", "web-programming"]
+exclude = ["/target"]
 
 [dependencies]
 jsonwebtoken = "9"

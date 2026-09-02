@@ -30,7 +30,8 @@ pub fn extract_bearer_token(authorization: &str) -> Option<String> {
 /// assert!(cookie.contains("HttpOnly"));
 /// ```
 pub fn build_auth_cookie(name: &str, value: &str, max_age_secs: i64, secure: bool) -> String {
-    let mut cookie = format!("{name}={value}; Max-Age={max_age_secs}; Path=/; HttpOnly; SameSite=Strict");
+    let mut cookie =
+        format!("{name}={value}; Max-Age={max_age_secs}; Path=/; HttpOnly; SameSite=Strict");
     if secure {
         cookie.push_str("; Secure");
     }

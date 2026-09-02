@@ -1,5 +1,5 @@
 use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use uuid::Uuid;
 
 use crate::claims::StandardClaims;
@@ -11,11 +11,17 @@ use crate::revocation::TokenRevocationStore;
 /// Supported JWT algorithms.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JwtAlgorithm {
+    /// HMAC-SHA256 (symmetric, 256-bit key).
     HS256,
+    /// HMAC-SHA384 (symmetric, 384-bit key).
     HS384,
+    /// HMAC-SHA512 (symmetric, 512-bit key).
     HS512,
+    /// RSA-SHA256 (asymmetric, 2048-bit key minimum).
     RS256,
+    /// RSA-SHA384 (asymmetric, 3072-bit key minimum).
     RS384,
+    /// RSA-SHA512 (asymmetric, 4096-bit key minimum).
     RS512,
 }
 
@@ -198,9 +204,7 @@ impl JwtService {
         #[cfg(feature = "revocation")]
         if let (Some(store), Some(jti)) = (&self.revocation, &claims.jti) {
             let revoked = tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async {
-                    store.is_revoked(jti).await
-                })
+                tokio::runtime::Handle::current().block_on(async { store.is_revoked(jti).await })
             })
             .map_err(|_| JwtError::Revoked)?;
 

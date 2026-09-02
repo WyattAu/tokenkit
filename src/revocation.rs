@@ -11,7 +11,8 @@ pub trait TokenRevocationStore: Send + Sync {
     async fn revoke(&self, jti: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
     /// Check whether a token has been revoked.
-    async fn is_revoked(&self, jti: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>>;
+    async fn is_revoked(&self, jti: &str)
+    -> Result<bool, Box<dyn std::error::Error + Send + Sync>>;
 }
 
 /// In-memory token revocation store.
@@ -44,7 +45,10 @@ impl TokenRevocationStore for InMemoryRevocationStore {
         Ok(())
     }
 
-    async fn is_revoked(&self, jti: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    async fn is_revoked(
+        &self,
+        jti: &str,
+    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
         Ok(self.revoked.read().await.contains(jti))
     }
 }
@@ -89,11 +93,12 @@ impl TokenRevocationStore for RedisRevocationStore {
         Ok(())
     }
 
-    async fn is_revoked(&self, jti: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    async fn is_revoked(
+        &self,
+        jti: &str,
+    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
         let mut conn = self.connection()?;
-        let exists: bool = redis::cmd("EXISTS")
-            .arg(jti)
-            .query(&mut conn)?;
+        let exists: bool = redis::cmd("EXISTS").arg(jti).query(&mut conn)?;
         Ok(exists)
     }
 }

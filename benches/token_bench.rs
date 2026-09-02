@@ -1,6 +1,6 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use tokenkit::claims::StandardClaims;
-use tokenkit::service::{JwtConfig, JwtService, JwtAlgorithm};
+use tokenkit::service::{JwtAlgorithm, JwtConfig, JwtService};
 
 fn setup_service() -> JwtService {
     let config = JwtConfig {
