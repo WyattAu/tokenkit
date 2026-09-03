@@ -20,7 +20,7 @@
 //!
 //! let config = JwtConfig {
 //!     algorithm: JwtAlgorithm::HS256,
-//!     secret: zeroize::Zeroizing::new("my-secret-key".to_string()),
+//!     secret: "my-secret-key".to_string(),
 //!     issuer: Some("my-app".to_string()),
 //!     ..Default::default()
 //! };
@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn jwt_config_short_secret_works_for_hmac() {
         let config = JwtConfig {
-            secret: zeroize::Zeroizing::new("ab".to_string()),
+            secret: "ab".to_string(),
             issuer: Some("test-issuer".to_string()),
             ..Default::default()
         };
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn jwt_service_encode_decode_roundtrip() {
         let config = JwtConfig {
-            secret: zeroize::Zeroizing::new("a-valid-secret-key-for-testing".to_string()),
+            secret: "a-valid-secret-key-for-testing".to_string(),
             issuer: Some("test-issuer".to_string()),
             ..Default::default()
         };
@@ -125,7 +125,7 @@ mod tests {
     #[test]
     fn jwt_service_encode_decode_with_issuer_audience() {
         let config = JwtConfig {
-            secret: zeroize::Zeroizing::new("test-secret-key-123".to_string()),
+            secret: "test-secret-key-123".to_string(),
             issuer: Some("test-issuer".to_string()),
             audience: Some("test-audience".to_string()),
             ..Default::default()
@@ -148,11 +148,11 @@ mod tests {
     #[test]
     fn jwt_service_wrong_secret_fails() {
         let config1 = JwtConfig {
-            secret: zeroize::Zeroizing::new("secret-one".to_string()),
+            secret: "secret-one".to_string(),
             ..Default::default()
         };
         let config2 = JwtConfig {
-            secret: zeroize::Zeroizing::new("secret-two".to_string()),
+            secret: "secret-two".to_string(),
             ..Default::default()
         };
         let service1 = JwtService::new(config1);
@@ -325,7 +325,7 @@ mod proptest_tests {
         #[test]
         fn jwt_roundtrip(sub in "[a-z0-9_-]{1,20}") {
             let config = JwtConfig {
-                secret: zeroize::Zeroizing::new("test-secret-key-12345".to_string()),
+                secret: "test-secret-key-12345".to_string(),
                 issuer: Some("test-issuer".to_string()),
                 ..Default::default()
             };
@@ -345,12 +345,12 @@ mod proptest_tests {
         #[test]
         fn jwt_wrong_secret_fails(iss in "[a-z0-9_-]{1,20}") {
             let config1 = JwtConfig {
-                secret: zeroize::Zeroizing::new("secret-one-for-testing".to_string()),
+                secret: "secret-one-for-testing".to_string(),
                 issuer: Some(iss.clone()),
                 ..Default::default()
             };
             let config2 = JwtConfig {
-                secret: zeroize::Zeroizing::new("secret-two-for-testing".to_string()),
+                secret: "secret-two-for-testing".to_string(),
                 issuer: Some(iss),
                 ..Default::default()
             };
@@ -370,7 +370,7 @@ mod proptest_tests {
         #[test]
         fn jwt_malformed_token_fails(data in "\\PC{1,500}") {
             let config = JwtConfig {
-                secret: zeroize::Zeroizing::new("a-valid-secret".to_string()),
+                secret: "a-valid-secret".to_string(),
                 ..Default::default()
             };
             let service = JwtService::new(config);

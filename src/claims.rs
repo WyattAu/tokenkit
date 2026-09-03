@@ -17,12 +17,20 @@ pub struct StandardClaims {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub aud: Option<String>,
 
-    /// Expiration time (UTC).
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Expiration time (UTC) — serialized as seconds since epoch for JWT compatibility.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "chrono::serde::ts_seconds_option"
+    )]
     pub exp: Option<DateTime<Utc>>,
 
-    /// Issued-at time (UTC).
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Issued-at time (UTC) — serialized as seconds since epoch for JWT compatibility.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "chrono::serde::ts_seconds_option"
+    )]
     pub iat: Option<DateTime<Utc>>,
 
     /// JWT ID (unique token identifier).
