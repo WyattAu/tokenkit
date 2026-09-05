@@ -39,7 +39,14 @@ impl From<JwtAlgorithm> for jsonwebtoken::Algorithm {
 }
 
 /// Configuration for JWT encoding and decoding.
-#[derive(Debug, Clone)]
+///
+/// The signing secret is sensitive: `Debug` is implemented manually and
+/// redacts `secret` and `rotation_secrets` so secrets cannot leak through
+/// logs or diagnostics.
+///
+/// # Requirements
+/// REQ-TK-107, REQ-TK-108
+#[derive(Clone)]
 pub struct JwtConfig {
     /// Signing algorithm.
     pub algorithm: JwtAlgorithm,
@@ -63,11 +70,40 @@ pub struct JwtConfig {
     pub rotation_secrets: Vec<String>,
 }
 
+impl std::fmt::Debug for JwtConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Redact secret material: the signing secret and any rotation
+        // secrets must never appear in Debug output (logs, panics, ...).
+        f.debug_struct("JwtConfig")
+            .field("algorithm", &self.config_alg_name())
+            .field("secret", &"<redacted>")
+            .field("issuer", &self.issuer)
+            .field("audience", &self.audience)
+            .field("access_token_ttl", &self.access_token_ttl)
+            .field("refresh_token_ttl", &self.refresh_token_ttl)
+            .finish()
+    }
+}
+
 impl JwtConfig {
+    fn config_alg_name(&self) -> &'static str {
+        match self.algorithm {
+            JwtAlgorithm::HS256 => "HS256",
+            JwtAlgorithm::HS384 => "HS384",
+            JwtAlgorithm::HS512 => "HS512",
+            JwtAlgorithm::RS256 => "RS256",
+            JwtAlgorithm::RS384 => "RS384",
+            JwtAlgorithm::RS512 => "RS512",
+        }
+    }
+
     /// Create a config with rotation support, using multiple secrets.
     ///
     /// The first secret in `secrets` becomes the active signing key.
     /// All secrets are tried during decoding.
+    ///
+    /// # Requirements
+    /// REQ-TK-005, REQ-TK-112
     #[cfg(feature = "rotation")]
     pub fn with_rotation_secrets(algorithm: JwtAlgorithm, secrets: Vec<String>) -> Self {
         let primary = secrets.first().cloned().unwrap_or_default();
@@ -119,6 +155,9 @@ impl JwtService {
     }
 
     /// Attach a revocation store for token revocation support.
+    ///
+    /// # Requirements
+    /// REQ-TK-110
     #[cfg(feature = "revocation")]
     pub fn with_revocation(mut self, store: Box<dyn TokenRevocationStore>) -> Self {
         self.revocation = Some(store);
@@ -126,6 +165,9 @@ impl JwtService {
     }
 
     /// Encode a custom claims struct into a JWT string.
+    ///
+    /// # Requirements
+    /// REQ-TK-001
     pub fn encode<T: serde::Serialize>(&self, claims: &T) -> Result<String, JwtError> {
         #[cfg(feature = "rotation")]
         let header = {
@@ -142,6 +184,12 @@ impl JwtService {
     /// Decode a JWT string into a generic claims struct.
     ///
     /// With the `rotation` feature, tries all configured secrets until one succeeds.
+    ///
+    /// # Requirements
+    /// REQ-TK-002, REQ-TK-100 (forged signature), REQ-TK-101 (expired),
+    /// REQ-TK-102 (required claims), REQ-TK-103 (issuer), REQ-TK-104
+    /// (audience), REQ-TK-105 (algorithm pinning), REQ-TK-106 (never panics
+    /// on hostile input)
     pub fn decode<T: serde::de::DeserializeOwned>(&self, token: &str) -> Result<T, JwtError> {
         let mut validation = Validation::new(self.config.algorithm.into());
         validation.set_required_spec_claims(&["exp", "iss"]);
@@ -177,6 +225,9 @@ impl JwtService {
     }
 
     /// Encode standard claims into a JWT access token.
+    ///
+    /// # Requirements
+    /// REQ-TK-003
     pub fn encode_standard(&self, mut claims: StandardClaims) -> Result<String, JwtError> {
         let now = Utc::now();
         if claims.iat.is_none() {
@@ -198,6 +249,12 @@ impl JwtService {
     }
 
     /// Decode a JWT into standard claims, with optional revocation check.
+    ///
+    /// A revocation-store failure fails closed: the token is rejected with
+    /// [`JwtError::Revoked`] rather than accepted.
+    ///
+    /// # Requirements
+    /// REQ-TK-004, REQ-TK-110 (revocation), REQ-TK-111 (fail-closed store)
     pub fn decode_standard(&self, token: &str) -> Result<StandardClaims, JwtError> {
         let claims: StandardClaims = self.decode(token)?;
 

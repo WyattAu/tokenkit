@@ -19,6 +19,9 @@ pub trait TokenRevocationStore: Send + Sync {
 ///
 /// Suitable for single-instance applications. For distributed systems,
 /// use `revocation-redis` feature or implement [`TokenRevocationStore`] yourself.
+///
+/// # Requirements
+/// REQ-TK-110, REQ-TK-113 (concurrent revoke/check safety)
 pub struct InMemoryRevocationStore {
     revoked: Arc<RwLock<HashSet<String>>>,
 }

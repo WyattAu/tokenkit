@@ -291,6 +291,241 @@ mod tests {
             "failed to load signing key: pem err"
         );
     }
+
+    /// REQ-TK-107: `Debug` for `JwtConfig` must redact the signing secret —
+    /// configs get logged, and the secret is the whole game for HMAC JWTs.
+    #[test]
+    fn jwt_config_debug_redacts_secret() {
+        let config = JwtConfig {
+            secret: "super-secret-value".to_string(),
+            issuer: Some("iss".to_string()),
+            ..Default::default()
+        };
+        let dbg = format!("{config:?}");
+        assert!(!dbg.contains("super-secret-value"));
+        assert!(dbg.contains("<redacted>"));
+    }
+
+    /// REQ-TK-101: an expired token must be rejected, not accepted.
+    #[test]
+    fn expired_token_rejected() {
+        let config = JwtConfig {
+            secret: "expired-test-secret".to_string(),
+            ..Default::default()
+        };
+        let service = JwtService::new(config);
+        let claims = NumericClaims {
+            sub: Some("user-1".to_string()),
+            exp: Some(now_plus_secs(0).saturating_sub(3600)), // 1h in the past
+            iss: None,
+            aud: None,
+        };
+        let token = service.encode(&claims).unwrap();
+        let result = service.decode::<NumericClaims>(&token);
+        assert!(result.is_err());
+    }
+
+    /// REQ-TK-102: `exp` and `iss` are required spec claims — a token
+    /// missing them is rejected even with a valid signature.
+    #[test]
+    fn missing_required_claims_rejected() {
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct BareClaims {
+            sub: Option<String>,
+        }
+        let config = JwtConfig {
+            secret: "required-claims-secret".to_string(),
+            ..Default::default()
+        };
+        let service = JwtService::new(config);
+        let token = service
+            .encode(&BareClaims {
+                sub: Some("user-1".to_string()),
+            })
+            .unwrap();
+        let result = service.decode::<NumericClaims>(&token);
+        assert!(result.is_err());
+    }
+
+    /// REQ-TK-103: a token whose `iss` does not match the configured issuer
+    /// is rejected (signed by the same secret — only the issuer differs).
+    #[test]
+    fn issuer_mismatch_rejected() {
+        let config = JwtConfig {
+            secret: "issuer-test-secret".to_string(),
+            issuer: Some("expected-issuer".to_string()),
+            ..Default::default()
+        };
+        let service = JwtService::new(config);
+        let claims = NumericClaims {
+            sub: Some("user-1".to_string()),
+            exp: Some(now_plus_secs(3600)),
+            iss: Some("evil-issuer".to_string()),
+            aud: None,
+        };
+        let token = service.encode(&claims).unwrap();
+        let result = service.decode::<NumericClaims>(&token);
+        assert!(result.is_err());
+    }
+
+    /// REQ-TK-104: a token whose `aud` does not match the configured
+    /// audience is rejected.
+    #[test]
+    fn audience_mismatch_rejected() {
+        let config = JwtConfig {
+            secret: "aud-test-secret".to_string(),
+            audience: Some("expected-aud".to_string()),
+            ..Default::default()
+        };
+        let service = JwtService::new(config);
+        let claims = NumericClaims {
+            sub: Some("user-1".to_string()),
+            exp: Some(now_plus_secs(3600)),
+            iss: None,
+            aud: Some("other-aud".to_string()),
+        };
+        let token = service.encode(&claims).unwrap();
+        let result = service.decode::<NumericClaims>(&token);
+        assert!(result.is_err());
+    }
+
+    /// REQ-TK-105: algorithm pinning — a token signed under a different
+    /// algorithm (here HS384) must be rejected by an HS256 service. This is
+    /// the JWT algorithm-confusion defense.
+    #[test]
+    fn cross_algorithm_token_rejected() {
+        let hs384_service = JwtService::new(JwtConfig {
+            secret: "shared-secret-value".to_string(),
+            algorithm: super::service::JwtAlgorithm::HS384,
+            ..Default::default()
+        });
+        let hs256_service = JwtService::new(JwtConfig {
+            secret: "shared-secret-value".to_string(),
+            algorithm: super::service::JwtAlgorithm::HS256,
+            ..Default::default()
+        });
+        let claims = NumericClaims {
+            sub: Some("user-1".to_string()),
+            exp: Some(now_plus_secs(3600)),
+            iss: None,
+            aud: None,
+        };
+        let token = hs384_service.encode(&claims).unwrap();
+        let result = hs256_service.decode::<NumericClaims>(&token);
+        assert!(result.is_err());
+    }
+
+    /// REQ-TK-112 (rotation feature): tokens signed with an old secret keep
+    /// verifying while rotation secrets are configured; unknown secrets fail.
+    #[cfg(feature = "rotation")]
+    #[test]
+    fn rotation_accepts_old_secret_tokens() {
+        let old_service = JwtService::new(JwtConfig {
+            secret: "old-secret".to_string(),
+            ..Default::default()
+        });
+        let claims = NumericClaims {
+            sub: Some("user-1".to_string()),
+            exp: Some(now_plus_secs(3600)),
+            iss: Some("issuer".to_string()),
+            aud: None,
+        };
+        let token = old_service.encode(&claims).unwrap();
+
+        // Rotated service: signs with "new-secret", still accepts old.
+        let rotated = JwtService::new(JwtConfig::with_rotation_secrets(
+            super::service::JwtAlgorithm::HS256,
+            vec!["new-secret".to_string(), "old-secret".to_string()],
+        ));
+        let decoded: NumericClaims = rotated.decode(&token).unwrap();
+        assert_eq!(decoded.sub.as_deref(), Some("user-1"));
+
+        // New tokens verify with the new primary secret.
+        let new_token = rotated.encode(&claims).unwrap();
+        let primary_only = JwtService::new(JwtConfig {
+            secret: "new-secret".to_string(),
+            ..Default::default()
+        });
+        assert!(primary_only.decode::<NumericClaims>(&new_token).is_ok());
+        assert!(primary_only.decode::<NumericClaims>(&token).is_err());
+    }
+
+    /// REQ-TK-110/REQ-TK-111 (revocation feature): a revoked `jti` is
+    /// rejected by `decode_standard`; a non-revoked token passes; revocation
+    /// is idempotent and visible across handles of the same store.
+    #[cfg(feature = "revocation")]
+    #[test]
+    fn revoked_token_rejected_by_decode_standard() {
+        use super::revocation::InMemoryRevocationStore;
+        use std::sync::Arc;
+
+        // No tokio "macros" feature in this crate's dep set — drive the
+        // async store API through a manually built runtime.
+        let rt = tokio::runtime::Runtime::new().unwrap();
+
+        let secret = "revocation-test-secret".to_string();
+        let store = Arc::new(InMemoryRevocationStore::new());
+
+        let service = JwtService::new(JwtConfig {
+            secret,
+            ..Default::default()
+        })
+        .with_revocation(Box::new(InMemoryRevocationStore::new()));
+
+        let claims = StandardClaims {
+            sub: Some("user-1".to_string()),
+            iss: Some("issuer".to_string()),
+            jti: Some("jti-to-revoke".to_string()),
+            exp: Some(chrono::Utc::now() + chrono::Duration::seconds(3600)),
+            ..Default::default()
+        };
+        let token = service.encode_standard(claims).unwrap();
+
+        // decode_standard enters the tokio context internally
+        // (block_in_place), so all calls must run inside the runtime.
+        rt.block_on(async {
+            use super::revocation::TokenRevocationStore as _;
+
+            // Not revoked yet.
+            assert!(service.decode_standard(&token).is_ok());
+
+            // Revoke, then verify the check fires from a service sharing the
+            // same store state.
+            store.revoke("jti-to-revoke").await.unwrap();
+            assert!(store.is_revoked("jti-to-revoke").await.unwrap());
+            // Idempotent revoke.
+            store.revoke("jti-to-revoke").await.unwrap();
+
+            let service_with_state = JwtService::new(JwtConfig {
+                secret: "revocation-test-secret".to_string(),
+                ..Default::default()
+            })
+            .with_revocation(Box::new(SharedStore(Arc::clone(&store))));
+            let err = service_with_state
+                .decode_standard(&token)
+                .expect_err("revoked token must be rejected");
+            assert!(matches!(err, JwtError::Revoked));
+        });
+    }
+
+    /// Adapter sharing an `Arc<InMemoryRevocationStore>` with a test.
+    #[cfg(feature = "revocation")]
+    struct SharedStore(std::sync::Arc<super::revocation::InMemoryRevocationStore>);
+
+    #[cfg(feature = "revocation")]
+    #[async_trait::async_trait]
+    impl super::revocation::TokenRevocationStore for SharedStore {
+        async fn revoke(&self, jti: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+            self.0.revoke(jti).await
+        }
+
+        async fn is_revoked(
+            &self,
+            jti: &str,
+        ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+            self.0.is_revoked(jti).await
+        }
+    }
 }
 
 // Tests exercise failure paths and invariants directly; unwrap/expect,
