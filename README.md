@@ -71,3 +71,7 @@ let service = JwtService::new(JwtConfig::default()).with_revocation(store);
 ## License
 
 MIT OR Apache-2.0
+
+## Security
+
+Threat model: [THREAT-MODEL.md](THREAT-MODEL.md).
