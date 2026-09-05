@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Standard JWT claims with optional extension fields.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct StandardClaims {
     /// Subject (e.g., user ID).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -48,20 +48,4 @@ pub struct StandardClaims {
     /// Additional custom claims.
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
-}
-
-impl Default for StandardClaims {
-    fn default() -> Self {
-        Self {
-            sub: None,
-            iss: None,
-            aud: None,
-            exp: None,
-            iat: None,
-            jti: None,
-            role: None,
-            permissions: Vec::new(),
-            extra: HashMap::new(),
-        }
-    }
 }

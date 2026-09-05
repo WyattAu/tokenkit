@@ -46,9 +46,20 @@ pub mod extractors;
 /// JWT service for encoding, decoding, and validation.
 pub mod service;
 
+/// Token revocation: pluggable `TokenRevocationStore` trait with
+/// in-memory and Redis-backed implementations.
 #[cfg(feature = "revocation")]
 pub mod revocation;
 
+// Tests exercise failure paths and invariants directly; unwrap/expect,
+// slicing, and panicking asserts are acceptable here — violations
+// surface as test failures, not production panics.
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic
+)]
 #[cfg(test)]
 mod tests {
     use super::claims::StandardClaims;
@@ -282,6 +293,15 @@ mod tests {
     }
 }
 
+// Tests exercise failure paths and invariants directly; unwrap/expect,
+// slicing, and panicking asserts are acceptable here — violations
+// surface as test failures, not production panics.
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic
+)]
 #[cfg(test)]
 mod proptest_tests {
     use super::service::{JwtConfig, JwtService};

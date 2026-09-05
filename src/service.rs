@@ -147,11 +147,11 @@ impl JwtService {
         validation.set_required_spec_claims(&["exp", "iss"]);
 
         if let Some(ref issuer) = self.config.issuer {
-            validation.set_issuer(&[issuer.clone()]);
+            validation.set_issuer(std::slice::from_ref(issuer));
         }
 
         if let Some(ref audience) = self.config.audience {
-            validation.set_audience(&[audience.clone()]);
+            validation.set_audience(std::slice::from_ref(audience));
         }
 
         #[cfg(feature = "rotation")]
