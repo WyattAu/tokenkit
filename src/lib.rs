@@ -404,15 +404,87 @@ mod tests {
             algorithm: super::service::JwtAlgorithm::HS256,
             ..Default::default()
         });
+        // `iss` must be present so the ONLY rejection reason can be the
+        // algorithm mismatch: required-spec-claim validation would otherwise
+        // reject the token before the pinned-algorithm check is reached,
+        // masking the very defense under test (REQ-TK-105).
         let claims = NumericClaims {
             sub: Some("user-1".to_string()),
             exp: Some(now_plus_secs(3600)),
-            iss: None,
+            iss: Some("issuer".to_string()),
             aud: None,
         };
         let token = hs384_service.encode(&claims).unwrap();
         let result = hs256_service.decode::<NumericClaims>(&token);
         assert!(result.is_err());
+    }
+
+    /// REQ-TK-107: `Debug` for `JwtConfig` surfaces the configured algorithm
+    /// name (operators must be able to tell which alg a config uses without
+    /// un-redacting anything).
+    #[test]
+    fn jwt_config_debug_shows_algorithm() {
+        let hs384 = JwtConfig {
+            algorithm: super::service::JwtAlgorithm::HS384,
+            ..Default::default()
+        };
+        assert!(format!("{hs384:?}").contains("HS384"), "{hs384:?}");
+
+        let rs256 = JwtConfig {
+            algorithm: super::service::JwtAlgorithm::RS256,
+            ..Default::default()
+        };
+        assert!(format!("{rs256:?}").contains("RS256"), "{rs256:?}");
+    }
+
+    /// REQ-TK-003: `encode_standard` stamps `exp` in the future (now + ttl)
+    /// and `iss` from the config — the minted token must validate.
+    #[test]
+    fn encode_standard_mints_a_valid_token() {
+        let config = JwtConfig {
+            secret: "standard-mint-secret".to_string(),
+            issuer: Some("issuer".to_string()),
+            ..Default::default()
+        };
+        let service = JwtService::new(config);
+        let claims = StandardClaims {
+            sub: Some("user-1".to_string()),
+            ..Default::default()
+        };
+        let token = service.encode_standard(claims).unwrap();
+        let decoded = service.validate(&token).unwrap();
+        assert_eq!(decoded.sub.as_deref(), Some("user-1"));
+    }
+
+    /// REQ-TK-101: `validate` rejects expired tokens and returns the real
+    /// claims for a live token (never default/anonymous claims).
+    #[test]
+    fn validate_rejects_expired_and_returns_real_claims() {
+        let config = JwtConfig {
+            secret: "validate-test-secret".to_string(),
+            issuer: Some("issuer".to_string()),
+            ..Default::default()
+        };
+        let service = JwtService::new(config);
+
+        let expired = NumericClaims {
+            sub: Some("user-1".to_string()),
+            exp: Some(now_plus_secs(0).saturating_sub(3600)),
+            iss: Some("issuer".to_string()),
+            aud: None,
+        };
+        let token = service.encode(&expired).unwrap();
+        assert!(service.validate(&token).is_err());
+
+        let fresh = NumericClaims {
+            sub: Some("user-2".to_string()),
+            exp: Some(now_plus_secs(3600)),
+            iss: Some("issuer".to_string()),
+            aud: None,
+        };
+        let token = service.encode(&fresh).unwrap();
+        let claims = service.validate(&token).unwrap();
+        assert_eq!(claims.sub.as_deref(), Some("user-2"));
     }
 
     /// REQ-TK-112 (rotation feature): tokens signed with an old secret keep
