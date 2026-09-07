@@ -1,0 +1,13 @@
+# Equivalent mutants — tokenkit (cargo-mutants --all-features, 2026-09-07)
+#
+# Survivors triaged as EQUIVALENT/unviable-in-suite. Baseline: 32 mutants,
+# 6 unviable, 25/26 viable killed (96.2%).
+
+src/service.rs:296:9: replace JwtService::decoding_key -> Result<DecodingKey, JwtError> with Ok(Default::default())
+  Rationale: cfg-phantom under --all-features. `decoding_key` is
+  `#[cfg(not(feature = "rotation"))]`; with rotation enabled (as
+  --all-features does) neither the function nor the mutant body is
+  compiled, so the mutant binary is bit-identical to the original and no
+  test in this suite can distinguish it. Not killable here; a
+  --no-default-features second pass (rotation off) would exercise it, as
+  queued for the validkit fallback branches in MUTATION.md.

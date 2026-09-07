@@ -1,12 +1,11 @@
-# mutation baseline pending — expect hours; run locally first.
-#
 # tokenkit: weekly mutation testing with cargo-mutants (informational).
 # Policy: engineering-standards/MUTATION.md.
+# Baseline (2026-09-07, local): 32 mutants, 6 unviable, 25/26 viable killed
+# = 96.2%. Sole survivor is a cfg-phantom (mutants-equivalent.txt).
 #
-# Promote to gating when scores stabilize: once survivors are equivalent-only
-# (or zero) and the score is stable across 4 consecutive weekly runs, set
-# continue-on-error: false and add a score gate
-# (cargo mutants --all-features --fail-under <score>).
+# Promote to gating when the score is stable across 4 consecutive weekly
+# runs: set continue-on-error: false and add
+# cargo mutants --all-features --fail-under 96
 name: mutation
 
 on:
