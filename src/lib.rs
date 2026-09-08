@@ -46,6 +46,10 @@ pub mod extractors;
 /// JWT service for encoding, decoding, and validation.
 pub mod service;
 
+/// JWKS fetching and caching with automatic rotation on `kid` miss.
+#[cfg(feature = "jwks")]
+pub mod jwks;
+
 /// Token revocation: pluggable `TokenRevocationStore` trait with
 /// in-memory and Redis-backed implementations.
 #[cfg(feature = "revocation")]

@@ -30,4 +30,8 @@ pub enum JwtError {
     /// Failed to load the signing key from disk.
     #[error("failed to load signing key: {0}")]
     KeyLoading(String),
+
+    /// Failed to fetch, parse, or resolve a key from a JWKS set.
+    #[error("JWKS error: {0}")]
+    Jwks(String),
 }

@@ -2,7 +2,7 @@
 name = "tokenkit"
 version = "0.1.1"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.88"
 description = "Type-safe JWT encode/decode for Rust — configurable validation, secret rotation, key rotation, and revocation support"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/WyattAu/tokenkit"
@@ -11,7 +11,7 @@ categories = ["authentication", "web-programming"]
 exclude = ["/target"]
 
 [dependencies]
-jsonwebtoken = "9"
+jsonwebtoken = { version = "11", features = ["rust_crypto"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
@@ -21,6 +21,7 @@ async-trait = { version = "0.1", optional = true }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync"], optional = true }
 redis = { version = "0.25", optional = true }
 zeroize = { version = "1", features = ["derive"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"], optional = true }
 
 [[bench]]
 name = "token_bench"
@@ -36,6 +37,7 @@ std = []
 revocation = ["tokio", "dep:async-trait"]
 revocation-redis = ["revocation", "dep:redis"]
 rotation = []
+jwks = ["tokio", "dep:reqwest"]
 
 [lints.clippy]
 unwrap_used = "deny"
