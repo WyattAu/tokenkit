@@ -126,9 +126,11 @@ impl JwksCache {
         self.refresh().await?;
 
         let state = self.state.read().await;
-        state.keys.get(want).cloned().ok_or_else(|| {
-            JwtError::Jwks(format!("unknown key id `{want}` after JWKS refresh"))
-        })
+        state
+            .keys
+            .get(want)
+            .cloned()
+            .ok_or_else(|| JwtError::Jwks(format!("unknown key id `{want}` after JWKS refresh")))
     }
 
     /// Decode `token` with the JWKS key referenced by its `kid` header.
@@ -141,8 +143,7 @@ impl JwksCache {
         token: &str,
         validation: &Validation,
     ) -> Result<T, JwtError> {
-        let header =
-            decode_header(token).map_err(|e| JwtError::DecodingFailed(e.to_string()))?;
+        let header = decode_header(token).map_err(|e| JwtError::DecodingFailed(e.to_string()))?;
         let key = self.decoding_key(header.kid.as_deref()).await?;
         decode::<T>(token, &key, validation)
             .map(|data| data.claims)
