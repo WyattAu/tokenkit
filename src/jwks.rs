@@ -300,4 +300,24 @@ mod tests {
             assert!(matches!(err, JwtError::DecodingFailed(_)), "{err:?}");
         });
     }
+
+    // ---- is_fresh boundary tests (kill cargo-mutants survivors) ----
+
+    #[test]
+    fn is_fresh_none_is_stale() {
+        assert!(!is_fresh(None, Duration::from_secs(300)));
+    }
+
+    #[test]
+    fn is_fresh_large_ttl_is_fresh() {
+        let at = Some(Instant::now());
+        assert!(is_fresh(at, Duration::from_secs(3600)));
+    }
+
+    #[test]
+    fn is_fresh_zero_ttl_is_stale_after_time_passes() {
+        let at = Some(Instant::now());
+        std::thread::sleep(Duration::from_millis(1));
+        assert!(!is_fresh(at, Duration::ZERO));
+    }
 }
