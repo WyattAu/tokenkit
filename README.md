@@ -1,6 +1,20 @@
 # tokenkit
 
+[![docs.rs](https://docs.rs/tokenkit/badge.svg)](https://docs.rs/tokenkit)
+[![crates.io](https://img.shields.io/crates/v/tokenkit.svg)](https://crates.io/crates/tokenkit)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
+
 Type-safe JWT encode/decode for Rust with configurable validation, secret rotation, key rotation, and revocation support.
+
+## Feature Flags
+
+| Feature | Default | Description |
+|---|---|---|
+| `std` | ✅ | Standard-library support. |
+| `rotation` | — | Secret rotation: tokens signed with previous secrets keep verifying while new tokens use the newest secret. |
+| `revocation` | — | Pluggable `TokenRevocationStore` trait with an in-memory store; decoding rejects revoked `jti`s. |
+| `revocation-redis` | — | Redis-backed revocation store for multi-instance deployments (implies `revocation`). |
+| `jwks` | — | JWKS fetching and caching with automatic rotation on `kid` miss. |
 
 ## Why?
 

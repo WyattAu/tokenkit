@@ -1,3 +1,5 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, allow(unused_attributes))]
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
@@ -48,11 +50,13 @@ pub mod service;
 
 /// JWKS fetching and caching with automatic rotation on `kid` miss.
 #[cfg(feature = "jwks")]
+#[cfg_attr(docsrs, doc(cfg(feature = "jwks")))]
 pub mod jwks;
 
 /// Token revocation: pluggable `TokenRevocationStore` trait with
 /// in-memory and Redis-backed implementations.
 #[cfg(feature = "revocation")]
+#[cfg_attr(docsrs, doc(cfg(feature = "revocation")))]
 pub mod revocation;
 
 // Tests exercise failure paths and invariants directly; unwrap/expect,
