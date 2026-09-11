@@ -1,0 +1,13 @@
+# cargo-audit configuration (cargo audit 0.22: `ignore` entries are advisory IDs;
+# justifications live in comments and in THREAT-MODEL.md).
+[advisories]
+ignore = [
+    # RUSTSEC-2023-0071 — Marvin Attack: timing side-channel against RSA
+    # *decryption* (PKCS#1 v1.5 / OAEP decryption oracles) in RustCrypto `rsa`.
+    # tokenkit reaches `rsa` only via jsonwebtoken's RSA signature support
+    # (EncodingKey/DecodingKey::from_rsa_pem — sign and verify). No decryption
+    # path is exposed by this crate, so the vulnerable oracle surface is
+    # unreachable. No fixed rsa 0.9.x release exists at audit time (0.9.10 is
+    # max stable); remove this ignore when an upstream fix lands.
+    "RUSTSEC-2023-0071",
+]

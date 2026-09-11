@@ -5,6 +5,21 @@ Changelog](https://keepachangelog.com/) — versions follow [semver](https://sem
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-11
+
+### Added
+- `jwks` feature: `JwksCache` fetches and caches JSON Web Key Sets with
+  TTL caching and automatic re-fetch on unknown `kid` (key rotation
+  without restarts).
+- `JwtError::Jwks` variant for JWKS fetch/parse failures.
+
+### Changed
+- **Breaking:** `JwtError` gained the `Jwks` variant without
+  `#[non_exhaustive]`, so exhaustive matches downstream need a new arm.
+  Semver-checks therefore requires a major (0.x → 0.2.0) bump relative
+  to the `v0.1.1` tag, whose tree predates the JWKS work.
+- `jsonwebtoken` 9 → 11 (RustCrypto backend).
+
 ## [0.1.1] - 2026-09-03
 
 ### Fixed

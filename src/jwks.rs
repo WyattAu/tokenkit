@@ -1,6 +1,6 @@
 //! JWKS fetching and caching with automatic rotation on `kid` miss.
 //!
-//! Enabled with the `jwks` feature. [`JwksCache`] fetches a JSON Web Key Set
+//! Enabled with the `jwks` feature. [`JwksCache`](crate::jwks::JwksCache) fetches a JSON Web Key Set
 //! from a URL, caches the decoded keys for a configurable TTL, and re-fetches
 //! whenever a token references an unknown `kid` — so rotated keys are picked
 //! up without restarts or redeploys.

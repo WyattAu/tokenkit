@@ -1,3 +1,6 @@
+// Test-only fixture: expect/unwrap are the idiomatic assertion style here.
+#![allow(clippy::expect_used)]
+
 use serde::{Deserialize, Serialize};
 use tokenkit::service::{JwtAlgorithm, JwtConfig, JwtService};
 
