@@ -23,11 +23,12 @@ The [`jsonwebtoken`](https://crates.io/crates/jsonwebtoken) crate provides low-l
 ## Features
 
 - **Type-safe claims** — `StandardClaims` struct with serde derives
-- **Configurable algorithms** — HS256/384/512, RS256/384/512
-- **Built-in validation** — issuer, audience, expiration checks
-- **Token revocation** — pluggable `TokenRevocationStore` trait with in-memory implementation
+- **Configurable algorithms** — HS256/384/512, RS256/384/512, PS256/384/512, ES256/384, EdDSA
+- **Configurable validation** — issuer, multi-audience, required claims, explicit leeway, `exp`/`nbf` toggles
+- **JWKS support** — fetching + caching with single-flight refresh, algorithm pinning against the key's `alg`, and a `from_static_keys` mode for air-gapped use
+- **Token revocation** — pluggable `TokenRevocationStore` trait with bounded in-memory and async Redis implementations
 - **JWT helpers** — `extract_bearer_token()`, `build_auth_cookie()`
-- **Secret & key rotation** — swap `JwtConfig` without downtime
+- **Secret & key rotation** — `kid`-based key selection with a legacy fallback for `kid`-less tokens
 - **`#![forbid(unsafe_code)]`** — no unsafe code anywhere
 
 ## Quick Start
@@ -52,8 +53,8 @@ let claims = StandardClaims {
 };
 let token = service.encode_standard(claims).unwrap();
 
-// Decode
-let decoded = service.decode_standard(&token).unwrap();
+// Decode (async — runs the revocation check when a store is attached)
+let decoded = service.decode_standard(&token).await.unwrap();
 assert_eq!(decoded.sub.as_deref(), Some("user-123"));
 ```
 
@@ -63,11 +64,14 @@ assert_eq!(decoded.sub.as_deref(), Some("user-123"));
 use tokenkit::revocation::InMemoryRevocationStore;
 use tokenkit::service::{JwtConfig, JwtService};
 
-let store = Box::new(InMemoryRevocationStore::new());
+let store = Box::new(InMemoryRevocationStore::new()); // bounded: 100k entries
 let service = JwtService::new(JwtConfig::default()).with_revocation(store);
 
 // Revoke a token by its jti claim
 // store.revoke("token-jti").await.unwrap();
+//
+// decode_standard is async and fails closed on store errors:
+// let claims = service.decode_standard(&token).await.unwrap();
 ```
 
 ## Comparison with Raw `jsonwebtoken`

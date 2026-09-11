@@ -561,13 +561,13 @@ mod tests {
         };
         let token = service.encode_standard(claims).unwrap();
 
-        // decode_standard enters the tokio context internally
-        // (block_in_place), so all calls must run inside the runtime.
+        // decode_standard awaits the revocation store directly; all calls
+        // must run inside the runtime.
         rt.block_on(async {
             use super::revocation::TokenRevocationStore as _;
 
             // Not revoked yet.
-            assert!(service.decode_standard(&token).is_ok());
+            assert!(service.decode_standard(&token).await.is_ok());
 
             // Revoke, then verify the check fires from a service sharing the
             // same store state.
@@ -583,6 +583,7 @@ mod tests {
             .with_revocation(Box::new(SharedStore(Arc::clone(&store))));
             let err = service_with_state
                 .decode_standard(&token)
+                .await
                 .expect_err("revoked token must be rejected");
             assert!(matches!(err, JwtError::Revoked));
         });

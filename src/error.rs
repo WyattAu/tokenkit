@@ -34,4 +34,16 @@ pub enum JwtError {
     /// Failed to fetch, parse, or resolve a key from a JWKS set.
     #[error("JWKS error: {0}")]
     Jwks(String),
+
+    /// The token's `alg` header does not match the algorithm advertised by
+    /// the key (`alg` member of the JWK). This is the algorithm-confusion
+    /// defense for JWKS-sourced keys: a key published for one algorithm
+    /// must never verify tokens claiming another.
+    #[error("algorithm mismatch: token header `{token_alg}` vs key `{key_alg}`")]
+    AlgorithmMismatch {
+        /// Algorithm claimed by the token header.
+        token_alg: String,
+        /// Algorithm advertised by the key.
+        key_alg: String,
+    },
 }
