@@ -554,17 +554,15 @@ impl JwtService {
         Err(last_err)
     }
 
-    /// Encode standard claims into a JWT access token.
-    ///
-    /// # Requirements
-    /// REQ-TK-003
-    pub fn encode_standard(&self, mut claims: StandardClaims) -> Result<String, JwtError> {
+    /// Stamp the bookkeeping claims (`iat`, `exp`, `iss`, `aud`, `jti`)
+    /// that are still unset, expiring the token `ttl_secs` from now.
+    fn stamped_standard(&self, mut claims: StandardClaims, ttl_secs: i64) -> StandardClaims {
         let now = Utc::now();
         if claims.iat.is_none() {
             claims.iat = Some(now);
         }
         if claims.exp.is_none() {
-            claims.exp = Some(now + Duration::seconds(self.config.access_token_ttl));
+            claims.exp = Some(now + Duration::seconds(ttl_secs));
         }
         if claims.iss.is_none() {
             claims.iss = self.config.issuer.clone();
@@ -581,6 +579,33 @@ impl JwtService {
         if claims.jti.is_none() {
             claims.jti = Some(Uuid::new_v4().to_string());
         }
+        claims
+    }
+
+    /// Encode standard claims into a JWT access token, expiring it after
+    /// [`JwtConfig::access_token_ttl`] seconds.
+    ///
+    /// # Requirements
+    /// REQ-TK-003
+    pub fn encode_standard(&self, claims: StandardClaims) -> Result<String, JwtError> {
+        let claims = self.stamped_standard(claims, self.config.access_token_ttl);
+        self.encode(&claims)
+    }
+
+    /// Encode standard claims into a refresh token, expiring it after
+    /// [`JwtConfig::refresh_token_ttl`] seconds (default 7 days) instead of
+    /// the access-token TTL.
+    ///
+    /// This is the consumer of `refresh_token_ttl`: access and refresh
+    /// tokens share the same config so the two lifetimes cannot drift
+    /// apart unnoticed. Revocation (when configured) applies to refresh
+    /// tokens through the same `decode_standard` path — a revoked refresh
+    /// token cannot mint new access tokens.
+    ///
+    /// # Requirements
+    /// REQ-TK-003, REQ-TK-110
+    pub fn encode_refresh_standard(&self, claims: StandardClaims) -> Result<String, JwtError> {
+        let claims = self.stamped_standard(claims, self.config.refresh_token_ttl);
         self.encode(&claims)
     }
 

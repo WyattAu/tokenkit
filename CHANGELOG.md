@@ -5,6 +5,30 @@ Changelog](https://keepachangelog.com/) — versions follow [semver](https://sem
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-12
+
+### Added
+
+- **`JwtService::encode_refresh_standard`** — mints refresh tokens expiring
+  after `JwtConfig::refresh_token_ttl` (default 7 days). This *wires* the
+  `refresh_token_ttl` config field, which was previously accepted and
+  defaulted (604800) but **never read by any behavior** — a dead knob:
+  callers (e.g. clawdius-auth) that set it got no effect. Access and
+  refresh lifetimes now come from the same config so the two cannot drift
+  apart unnoticed; revocation applies to refresh tokens through the same
+  `decode_standard` path.
+
+### Tests
+
+- New `tests/config_matrix.rs` proving each config knob observably changes
+  behavior: `access_token_ttl` / `refresh_token_ttl` stamped expiry (and
+  their divergence), `with_audiences` accept/reject, JWKS `with_client`
+  (fetch routed through the provided client, proven via a wire probe),
+  `with_min_refresh_interval` (on-miss refreshes skipped inside the window,
+  performed at ZERO), and `with_ttl` (zero TTL re-fetches even cached kids)
+  — all against a loopback mock JWKS endpoint with a fetch counter, no
+  sleeps, no external network.
+
 ## [0.3.0] - 2026-09-11
 
 Security release: closes the JWKS alg-confusion surface, removes
