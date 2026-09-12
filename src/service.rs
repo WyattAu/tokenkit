@@ -19,7 +19,7 @@ pub const DEFAULT_LEEWAY_SECS: u64 = 60;
 /// [`JwtConfig::required_claims`].
 pub const DEFAULT_REQUIRED_CLAIMS: [&str; 2] = ["exp", "iss"];
 
-/// Default bound for [`crate::revocation::InMemoryRevocationStore`].
+/// Default bound for `InMemoryRevocationStore` (feature `revocation`).
 pub const DEFAULT_REVOCATION_MAX_ENTRIES: usize = 100_000;
 
 /// Supported JWT algorithms.

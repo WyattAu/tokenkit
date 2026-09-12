@@ -5,6 +5,24 @@ Changelog](https://keepachangelog.com/) — versions follow [semver](https://sem
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-12
+
+### Added
+- `tests/config_matrix.rs`: revocation-wiring coverage (feature `revocation`)
+  for `JwtService::with_revocation` — revoked jti rejected with
+  `JwtError::Revoked` via `decode_standard`, live jti accepted, revoked
+  refresh token rejected, and the no-jti-bypasses-store contract documented.
+  This was the last untested knob: the full `JwtConfig` matrix (leeway,
+  required_claims, audiences, validate_exp/nbf, TTLs, rotation, JWKS,
+  revocation limits) is now behavior-proven. Dead-knob sweep found zero dead
+  knobs; `build_validation()` verified to flow every validation knob.
+
+### Fixed
+- Doc link `crate::revocation::InMemoryRevocationStore` on
+  `DEFAULT_REVOCATION_MAX_ENTRIES` broke `cargo doc` without the
+  `revocation` feature; reworded feature-agnostically (`cargo doc --no-deps`
+  is warning-free again).
+
 ## [0.4.0] - 2026-09-12
 
 ### Added

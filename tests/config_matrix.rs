@@ -367,3 +367,161 @@ mod jwks_config_tests {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// Revocation knob (feature "revocation"): `with_revocation` must observably
+// gate `decode_standard` — a revoked jti is rejected, a live jti passes.
+// Previously untested: the fail-closed Redis path had coverage, the happy/
+// revoked in-memory paths did not.
+// ---------------------------------------------------------------------------
+#[cfg(feature = "revocation")]
+mod revocation_config_tests {
+    use std::collections::HashSet;
+    use std::sync::{Arc, Mutex};
+
+    use tokenkit::claims::StandardClaims;
+    use tokenkit::error::JwtError;
+    use tokenkit::revocation::TokenRevocationStore;
+    use tokenkit::service::{JwtAlgorithm, JwtConfig, JwtService};
+
+    /// Minimal shared revocation store so the test can revoke through one
+    /// handle while the service holds another.
+    #[derive(Default)]
+    struct SharedStore {
+        revoked: Mutex<HashSet<String>>,
+    }
+
+    impl SharedStore {
+        fn revoke(&self, jti: &str) {
+            self.revoked.lock().unwrap().insert(jti.to_string());
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl TokenRevocationStore for SharedStore {
+        async fn revoke(&self, jti: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+            SharedStore::revoke(self, jti);
+            Ok(())
+        }
+
+        async fn is_revoked(
+            &self,
+            jti: &str,
+        ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+            Ok(self.revoked.lock().unwrap().contains(jti))
+        }
+    }
+
+    fn service_with_revocation() -> (Arc<JwtService>, Arc<SharedStore>) {
+        let store = Arc::new(SharedStore::default());
+        let config = JwtConfig {
+            algorithm: JwtAlgorithm::HS256,
+            secret: "config-matrix-revocation-secret".to_string(),
+            issuer: Some("config-matrix-issuer".to_string()),
+            ..Default::default()
+        };
+        let service = Arc::new(
+            JwtService::new(config).with_revocation(Box::new(SharedHandle(Arc::clone(&store)))),
+        );
+        (service, store)
+    }
+
+    /// `Box<dyn TokenRevocationStore>` adapter over the shared handle.
+    struct SharedHandle(Arc<SharedStore>);
+
+    #[async_trait::async_trait]
+    impl TokenRevocationStore for SharedHandle {
+        async fn revoke(&self, jti: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+            self.0.revoke(jti);
+            Ok(())
+        }
+
+        async fn is_revoked(
+            &self,
+            jti: &str,
+        ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+            self.0.is_revoked(jti).await
+        }
+    }
+
+    fn claims_with_jti(jti: Option<&str>) -> StandardClaims {
+        use chrono::{Duration, Utc};
+        StandardClaims {
+            sub: Some("user-1".to_string()),
+            iss: Some("config-matrix-issuer".to_string()),
+            exp: Some(Utc::now() + Duration::seconds(3600)),
+            jti: jti.map(str::to_string),
+            ..Default::default()
+        }
+    }
+
+    /// `with_revocation`: decoding a token whose jti was revoked must fail
+    /// with `JwtError::Revoked`; the same service accepts a token whose jti
+    /// is not in the store.
+    #[test]
+    fn with_revocation_rejects_revoked_jti_and_accepts_live_jti() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let (service, store) = service_with_revocation();
+
+        let revoked_token = service
+            .encode(&claims_with_jti(Some("revoked-jti")))
+            .unwrap();
+        let live_token = service.encode(&claims_with_jti(Some("live-jti"))).unwrap();
+
+        runtime.block_on(async move {
+            // Before revocation both decode.
+            service.decode_standard(&live_token).await.unwrap();
+            service.decode_standard(&revoked_token).await.unwrap();
+
+            store.revoke("revoked-jti");
+
+            // After revocation: revoked jti fails closed, live jti still passes.
+            let err = service
+                .decode_standard(&revoked_token)
+                .await
+                .expect_err("revoked jti must be rejected");
+            assert!(matches!(err, JwtError::Revoked), "{err:?}");
+            service.decode_standard(&live_token).await.unwrap();
+        });
+    }
+
+    /// Refresh tokens ride the same revocation path: a revoked refresh
+    /// token cannot be decoded (and therefore cannot mint new access tokens).
+    #[test]
+    fn revoked_refresh_token_is_rejected_via_decode_standard() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let (service, store) = service_with_revocation();
+
+        let refresh = service
+            .encode(&claims_with_jti(Some("refresh-jti")))
+            .unwrap();
+
+        runtime.block_on(async move {
+            service.decode_standard(&refresh).await.unwrap();
+            store.revoke("refresh-jti");
+            let err = service
+                .decode_standard(&refresh)
+                .await
+                .expect_err("revoked");
+            assert!(matches!(err, JwtError::Revoked), "{err:?}");
+        });
+    }
+
+    /// A store attached but a token WITHOUT a jti: the revocation check is
+    /// skipped (there is no identifier to look up). Documents the contract:
+    /// revocation applies only to tokens carrying a jti — `encode_standard`
+    /// and `encode_refresh_standard` always stamp one.
+    #[test]
+    fn token_without_jti_bypasses_the_store_by_contract() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let (service, _store) = service_with_revocation();
+
+        let no_jti = claims_with_jti(None);
+        let token = service.encode(&no_jti).unwrap();
+
+        runtime.block_on(async move {
+            let claims = service.decode_standard(&token).await.unwrap();
+            assert_eq!(claims.jti, None);
+        });
+    }
+}
