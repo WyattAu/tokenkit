@@ -152,7 +152,10 @@ fn legacy_rotation_secrets_constructor_still_works() {
 fn rotation_key_debug_redacts_secret() {
     let key = RotationKey::new("rotation-hush-hush-secret", Some("kid-1".to_string()));
     let rendered = format!("{key:?}");
-    assert!(rendered.contains("kid-1"), "key_id is not secret: {rendered}");
+    assert!(
+        rendered.contains("kid-1"),
+        "key_id is not secret: {rendered}"
+    );
     assert!(
         !rendered.contains("rotation-hush-hush-secret"),
         "Debug must redact the signing secret: {rendered}"
