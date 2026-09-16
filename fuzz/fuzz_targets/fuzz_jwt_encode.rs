@@ -3,7 +3,6 @@
 use libfuzzer_sys::fuzz_target;
 use serde::{Deserialize, Serialize};
 use tokenkit::service::{JwtConfig, JwtService};
-use zeroize::Zeroizing;
 
 /// Minimal claims struct for fuzzing encode with arbitrary values.
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,7 +20,7 @@ fuzz_target!(|data: &[u8]| {
     if let Ok(s) = std::str::from_utf8(data) {
         if let Ok(claims) = serde_json::from_str::<FuzzClaims>(s) {
             let config = JwtConfig {
-                secret: Zeroizing::new("fuzz-test-secret-key".to_string()),
+                secret: "fuzz-test-secret-key".to_string(),
                 issuer: Some("fuzz-test".to_string()),
                 ..Default::default()
             };

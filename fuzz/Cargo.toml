@@ -11,10 +11,12 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-tokenkit = { path = ".." }
+tokenkit = { path = "..", features = ["jwks"] }
+jsonwebtoken = "11"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 zeroize = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["rt"] }
 
 [[bin]]
 name = "fuzz_jwt_decode"
@@ -25,5 +27,17 @@ doc = false
 [[bin]]
 name = "fuzz_jwt_encode"
 path = "fuzz_targets/fuzz_jwt_encode.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_claim_validation"
+path = "fuzz_targets/fuzz_claim_validation.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_jwks"
+path = "fuzz_targets/fuzz_jwks.rs"
 test = false
 doc = false

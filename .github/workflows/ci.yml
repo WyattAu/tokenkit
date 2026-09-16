@@ -13,3 +13,22 @@ jobs:
       loom: false
       wasm: false
       miri: false
+
+  # Fuzz smoke: 60s per parser/validation target. Full runs are local/nightly;
+  # this gate catches regressions on the untrusted-input surfaces early.
+  fuzz-smoke:
+    name: fuzz smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo install cargo-fuzz --locked
+      - name: jwt decode smoke (60s)
+        run: cargo fuzz run fuzz_jwt_decode -- -max_total_time=60 -max_len=8192 -detect_leaks=0
+      - name: jwt encode smoke (60s)
+        run: cargo fuzz run fuzz_jwt_encode -- -max_total_time=60 -max_len=8192 -detect_leaks=0
+      - name: claim validation smoke (60s)
+        run: cargo fuzz run fuzz_claim_validation -- -max_total_time=60 -max_len=8192 -detect_leaks=0
+      - name: jwks decode smoke (60s)
+        run: cargo fuzz run fuzz_jwks -- -max_total_time=60 -max_len=8192 -detect_leaks=0

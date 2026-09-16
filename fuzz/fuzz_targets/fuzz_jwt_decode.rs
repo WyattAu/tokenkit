@@ -3,7 +3,6 @@
 use libfuzzer_sys::fuzz_target;
 use tokenkit::claims::StandardClaims;
 use tokenkit::service::{JwtConfig, JwtService};
-use zeroize::Zeroizing;
 
 fuzz_target!(|data: &[u8]| {
     // Convert arbitrary bytes to a string (lossy) to use as a token
@@ -11,7 +10,7 @@ fuzz_target!(|data: &[u8]| {
 
     // Create a JWT service with a known secret
     let config = JwtConfig {
-        secret: Zeroizing::new("fuzz-test-secret-key".to_string()),
+        secret: "fuzz-test-secret-key".to_string(),
         issuer: Some("fuzz-test".to_string()),
         ..Default::default()
     };
