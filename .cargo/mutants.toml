@@ -1,0 +1,30 @@
+# cargo-mutants configuration.
+# Config only — do NOT run in CI (too slow for routine verification).
+#
+# Baseline (2026-09-16, --all-features): 106 mutants, 75 caught,
+# 6 missed, 25 unviable = 92.6% kill score.
+#
+# The 6 remaining misses (triaged — none is a fixable test gap):
+#   * service.rs:573 `delete !` — equivalent: the dedup guard's duplicate
+#     push is invisible because `audiences.into_iter().next()` reads the
+#     unchanged first element.
+#   * service.rs:658 decoding_key — cfg-dead under --all-features (the
+#     `rotation` feature replaces this non-rotation decode path).
+#   * jwks.rs:284 / revocation.rs:35 / revocation.rs:137 `<` → `<=` —
+#     boundary mutants: observable only when an age/elapsed lands exactly
+#     on the TTL; untestable without clock injection.
+#   * revocation.rs:196 reset_connection — observable only via a live
+#     Redis reconnect; the offline suite runs no Redis tests on purpose.
+#
+# History: 40.4% kill score on a default-features run — false misses in
+# feature-gated modules (revocation/jwks compile out; mutants of dead code
+# pass trivially). Always run with --all-features.
+#
+# Reproduce:
+#   CARGO_TARGET_DIR=/var/tmp/target-mutants-tokenkit \
+#     cargo mutants --in-place --no-shuffle --all-features
+# (copy-mode `-j 4` shares one target dir across parallel scenarios and
+# intermittently reuses stale test binaries — in-place sequential is the
+# reliable protocol here.)
+timeout_multiplier = 4.0
+exclude_globs = ["tests/*", "benches/*"]

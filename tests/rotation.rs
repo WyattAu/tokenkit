@@ -144,3 +144,17 @@ fn legacy_rotation_secrets_constructor_still_works() {
     let header = jsonwebtoken::decode_header(&token).unwrap();
     assert_eq!(header.kid, None);
 }
+
+/// `RotationKey`'s Debug impl must redact the secret: debug-formatted keys
+/// show up in logs and error paths, and the raw signing material must never
+/// appear there.
+#[test]
+fn rotation_key_debug_redacts_secret() {
+    let key = RotationKey::new("rotation-hush-hush-secret", Some("kid-1".to_string()));
+    let rendered = format!("{key:?}");
+    assert!(rendered.contains("kid-1"), "key_id is not secret: {rendered}");
+    assert!(
+        !rendered.contains("rotation-hush-hush-secret"),
+        "Debug must redact the signing secret: {rendered}"
+    );
+}

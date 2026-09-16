@@ -1,2 +1,7 @@
 /target
 *.crate
+
+# cargo-mutants output
+cargo-mutants/
+mutants.out/
+mutants.out.old/

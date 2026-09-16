@@ -278,6 +278,10 @@ mod tests {
             // Fourth insert evicts jti-1 (the oldest), not the newest.
             store.revoke("jti-4").await.unwrap();
             assert_eq!(store.len().await, 3, "store must stay bounded");
+            assert!(
+                !store.is_empty().await,
+                "a store holding live entries must not report empty"
+            );
             assert!(!store.is_revoked("jti-1").await.unwrap(), "oldest evicted");
             assert!(store.is_revoked("jti-2").await.unwrap());
             assert!(store.is_revoked("jti-3").await.unwrap());

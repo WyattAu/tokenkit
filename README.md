@@ -86,6 +86,17 @@ let service = JwtService::new(JwtConfig::default()).with_revocation(store);
 | Secret rotation support | ✅ | Manual |
 | `forbid(unsafe_code)` | ✅ | ❌ |
 
+## Mutation testing
+
+`cargo mutants` (config in [`.cargo/mutants.toml`](.cargo/mutants.toml), not run in CI):
+
+- **2026-09-16 baseline: 106 mutants, 75 caught, 6 missed, 25 unviable = 92.6% kill score.**
+- Scope: all `src/` modules (`service.rs`, `revocation.rs`, `jwks.rs`, `claims.rs`, `lib.rs`, `extractors.rs`, `error.rs`); `tests/` and `benches/` excluded from mutation.
+- Always run with `--all-features`: feature-gated modules (`revocation`, `jwks`) otherwise compile out and their mutants pass trivially (a default-features run scores 40% purely on false misses).
+- The 6 remaining misses are triaged in the `.cargo/mutants.toml` comment: one equivalent mutant, one cfg-dead branch, three TTL-boundary mutants, one live-Redis-only path.
+- New tests added during this baseline: per-algorithm JOSE-header pinning in `tests/algorithms.rs` (kills constructor/builder algorithm swaps — the JWT algorithm-confusion class), `RotationKey` debug redaction, and `!is_empty()` on a non-empty revocation store.
+- Reproduce: `CARGO_TARGET_DIR=/var/tmp/target-mutants-tokenkit cargo mutants --in-place --no-shuffle --all-features` (~4 min).
+
 ## License
 
 MIT OR Apache-2.0

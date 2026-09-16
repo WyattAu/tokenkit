@@ -139,10 +139,20 @@ fn claims() -> NumericClaims {
 /// Encode + decode a roundtrip; both directions must succeed with
 /// matching claims. Claims are computed once — two `now()` calls could
 /// straddle a second boundary and flake the comparison.
-fn assert_roundtrip(config: JwtConfig) {
+fn assert_roundtrip(config: JwtConfig, intended_alg: JwtAlgorithm) {
+    // Pin the *intended* algorithm (passed by the caller, NOT read back
+    // from the config): a constructor/builder mutant that silently swaps
+    // in another algorithm (e.g. `from_ed_pem` defaulting to HS256 with an
+    // empty secret) must not pass a roundtrip — the minted token's JOSE
+    // header carries the algorithm that actually signed it.
     let service = JwtService::new(config);
     let expected = claims();
     let token = service.encode(&expected).unwrap();
+    assert_eq!(
+        jsonwebtoken::decode_header(&token).unwrap().alg,
+        jsonwebtoken::Algorithm::from(intended_alg),
+        "token header alg must match the algorithm the caller intended"
+    );
     let decoded: NumericClaims = service.decode(&token).unwrap();
     assert_eq!(decoded, expected);
 }
@@ -168,65 +178,63 @@ fn rsa_pem_config(alg: JwtAlgorithm) -> JwtConfig {
 
 #[test]
 fn roundtrip_hs256() {
-    assert_roundtrip(hmac_config(JwtAlgorithm::HS256));
+    assert_roundtrip(hmac_config(JwtAlgorithm::HS256), JwtAlgorithm::HS256);
 }
 
 #[test]
 fn roundtrip_hs384() {
-    assert_roundtrip(hmac_config(JwtAlgorithm::HS384));
+    assert_roundtrip(hmac_config(JwtAlgorithm::HS384), JwtAlgorithm::HS384);
 }
 
 #[test]
 fn roundtrip_hs512() {
-    assert_roundtrip(hmac_config(JwtAlgorithm::HS512));
+    assert_roundtrip(hmac_config(JwtAlgorithm::HS512), JwtAlgorithm::HS512);
 }
 
 #[test]
 fn roundtrip_rs256() {
-    assert_roundtrip(rsa_pem_config(JwtAlgorithm::RS256));
+    assert_roundtrip(rsa_pem_config(JwtAlgorithm::RS256), JwtAlgorithm::RS256);
 }
 
 #[test]
 fn roundtrip_rs384() {
-    assert_roundtrip(rsa_pem_config(JwtAlgorithm::RS384));
+    assert_roundtrip(rsa_pem_config(JwtAlgorithm::RS384), JwtAlgorithm::RS384);
 }
 
 #[test]
 fn roundtrip_rs512() {
-    assert_roundtrip(rsa_pem_config(JwtAlgorithm::RS512));
+    assert_roundtrip(rsa_pem_config(JwtAlgorithm::RS512), JwtAlgorithm::RS512);
 }
 
 #[test]
 fn roundtrip_ps256() {
-    assert_roundtrip(rsa_pem_config(JwtAlgorithm::PS256));
+    assert_roundtrip(rsa_pem_config(JwtAlgorithm::PS256), JwtAlgorithm::PS256);
 }
 
 #[test]
 fn roundtrip_ps384() {
-    assert_roundtrip(rsa_pem_config(JwtAlgorithm::PS384));
+    assert_roundtrip(rsa_pem_config(JwtAlgorithm::PS384), JwtAlgorithm::PS384);
 }
 
 #[test]
 fn roundtrip_ps512() {
-    assert_roundtrip(rsa_pem_config(JwtAlgorithm::PS512));
+    assert_roundtrip(rsa_pem_config(JwtAlgorithm::PS512), JwtAlgorithm::PS512);
 }
 
 #[test]
 fn roundtrip_es256() {
-    assert_roundtrip(ec_config(
+    assert_roundtrip(
+        ec_config(JwtAlgorithm::ES256, EC_P256_PEM, EC_P256_PUBLIC_PEM),
         JwtAlgorithm::ES256,
-        EC_P256_PEM,
-        EC_P256_PUBLIC_PEM,
-    ));
+    );
 }
 
 #[test]
 fn roundtrip_es384() {
-    assert_roundtrip(ec_config(
+    assert_roundtrip(
+        ec_config(JwtAlgorithm::ES384, EC_P384_PEM, EC_P384_PUBLIC_PEM),
         JwtAlgorithm::ES384,
-        EC_P384_PEM,
-        EC_P384_PUBLIC_PEM,
-    ));
+    );
 }
 
 #[test]
@@ -234,7 +242,7 @@ fn roundtrip_eddsa_pem() {
     let config = JwtConfig::from_ed_pem(ED25519_PEM)
         .with_public_key(ED25519_PUBLIC_PEM)
         .with_issuer();
-    assert_roundtrip(config);
+    assert_roundtrip(config, JwtAlgorithm::EdDSA);
 }
 
 #[test]
@@ -242,7 +250,12 @@ fn roundtrip_eddsa_der() {
     let config = JwtConfig::from_ed_der(hex_to_bytes(ED25519_DER_HEX))
         .with_der_public_key(hex_to_bytes(ED25519_PUBLIC_RAW_HEX))
         .with_issuer();
-    assert_roundtrip(config);
+    assert_eq!(
+        config.der_public_key.as_deref(),
+        Some(hex_to_bytes(ED25519_PUBLIC_RAW_HEX).as_slice()),
+        "with_der_public_key must store the raw verification key"
+    );
+    assert_roundtrip(config, JwtAlgorithm::EdDSA);
 }
 
 fn ec_config(alg: JwtAlgorithm, private_pem: &str, public_pem: &str) -> JwtConfig {
@@ -262,12 +275,12 @@ fn roundtrip_with_der_public_keys() {
         issuer: Some("issuer".to_string()),
         ..Default::default()
     };
-    assert_roundtrip(rs256);
+    assert_roundtrip(rs256, JwtAlgorithm::RS256);
 
     let es256 = JwtConfig::from_ec_pem(JwtAlgorithm::ES256, EC_P256_PEM)
         .with_der_public_key(hex_to_bytes(EC_P256_PUBLIC_SEC1_HEX))
         .with_issuer();
-    assert_roundtrip(es256);
+    assert_roundtrip(es256, JwtAlgorithm::ES256);
 }
 
 /// ES384-signed tokens are rejected by an ES256 service (cross-algorithm
