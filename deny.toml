@@ -7,6 +7,23 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
+ignore = [
+    # rsa "Marvin Attack" (RSA timing side-channel, private-key recovery).
+    # No patched release exists upstream: patched = [] is intentional and both
+    # 0.9.10 (latest stable) and 0.10.0-rc.x remain affected (advisory reviewed
+    # 2026-09-12), so no in-range bump can resolve it. Enters via jsonwebtoken
+    # v11 `rust_crypto` feature, which tokenkit enables for RS256/PS256
+    # support; dropping the feature is a functional break, not a deps fix.
+    # Exposure is opt-in: the default path is HS256, and JWKS verification is
+    # public-key-only (no key-recovery surface). RSA *signing* with a private
+    # key over a timing-observable channel remains accepted risk — prefer
+    # ES256/EdDSA when caller-controlled. Fleet precedent: EvergreenShims
+    # accepts the same advisory.
+    # Tracking: https://github.com/RustCrypto/RSA/issues/626 (implicit
+    # rejection #680, default-path blinding #702). TODO: remove this ignore
+    # and bump rsa as soon as a patched release lands.
+    "RUSTSEC-2023-0071",
+]
 
 [licenses]
 version = 2
