@@ -1,4 +1,5 @@
 # tokenkit
+[![Estate integration](https://github.com/WyattAu/estate-integration/actions/workflows/ci.yml/badge.svg)](https://github.com/WyattAu/estate-integration/actions/workflows/ci.yml)
 
 [![docs.rs](https://docs.rs/tokenkit/badge.svg)](https://docs.rs/tokenkit)
 [![crates.io](https://img.shields.io/crates/v/tokenkit.svg)](https://crates.io/crates/tokenkit)
