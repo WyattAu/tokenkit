@@ -98,6 +98,13 @@ let service = JwtService::new(JwtConfig::default()).with_revocation(store);
 - New tests added during this baseline: per-algorithm JOSE-header pinning in `tests/algorithms.rs` (kills constructor/builder algorithm swaps — the JWT algorithm-confusion class), `RotationKey` debug redaction, and `!is_empty()` on a non-empty revocation store.
 - Reproduce: `CARGO_TARGET_DIR=/var/tmp/target-mutants-tokenkit cargo mutants --in-place --no-shuffle --all-features` (~4 min).
 
+## Stability
+
+`tokenkit` is 1.0. Breaking changes require a minor bump and a `#[deprecated]`
+window of at least one minor release; MSRV bumps are minor releases, never patch
+releases. Tokens written by any 1.x release verify against every later 1.x
+release. New mandatory claims are never introduced in a patch release.
+
 ## License
 
 MIT OR Apache-2.0

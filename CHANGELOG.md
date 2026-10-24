@@ -1,9 +1,33 @@
 # Changelog
 
 All notable changes to this project are documented here. Format: [Keep a
-Changelog](https://keepachangelog.com/) — versions follow [semver](https://semver.org).
+Changelog](https://keepachangelog.com/): versions follow [semver](https://semver.org).
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-10-24
+
+### Declared stable
+
+First 1.0. `tokenkit` issues and verifies production JWT sessions (including the
+estate's own accessctl and barbican consumers); this release commits the encode,
+validation, rotation, and revocation surfaces as API-stable.
+
+### Guarantees from here on
+
+- Breaking changes to public items require a minor bump plus a `#[deprecated]`
+  window of at least one minor release.
+- MSRV bumps are minor releases, not patch releases.
+- `#![deny(missing_docs)]` and `#![forbid(unsafe_code)]` are enforced.
+- Tokens written by any 1.x release verify against every later 1.x release.
+
+### Explicitly not guaranteed
+
+- Private claim shapes used by estate consumers are documented but may gain
+  optional fields in minors.
+- New mandatory claims will never be introduced in a patch release.
+
+
 
 ## [0.4.1] - 2026-09-12
 

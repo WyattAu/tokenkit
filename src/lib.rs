@@ -2,6 +2,7 @@
 #![cfg_attr(docsrs, allow(unused_attributes))]
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
+#![deny(missing_docs)]
 
 //! Type-safe JWT encode/decode for Rust with configurable validation,
 //! secret rotation, key rotation, and revocation support.
