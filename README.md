@@ -1,7 +1,7 @@
-| `rotation` |; | Secret rotation: tokens signed with previous secrets keep verifying while new tokens use the newest secret. |
-| `revocation` |; | Pluggable `TokenRevocationStore` trait with an in-memory store; decoding rejects revoked `jti`s. |
-| `revocation-redis` |; | Redis-backed revocation store for multi-instance deployments (implies `revocation`). |
-| `jwks` |; | JWKS fetching and caching with automatic rotation on `kid` miss. |
+| `rotation` | - | Secret rotation: tokens signed with previous secrets keep verifying while new tokens use the newest secret. |
+| `revocation` | - | Pluggable `TokenRevocationStore` trait with an in-memory store; decoding rejects revoked `jti`s. |
+| `revocation-redis` | - | Redis-backed revocation store for multi-instance deployments (implies `revocation`). |
+| `jwks` | - | JWKS fetching and caching with automatic rotation on `kid` miss. |
 - **Type-safe claims**; `StandardClaims` struct with serde derives
 - **Configurable algorithms**; HS256/384/512, RS256/384/512, PS256/384/512, ES256/384, EdDSA
 - **Configurable validation**; issuer, multi-audience, required claims, explicit leeway, `exp`/`nbf` toggles
