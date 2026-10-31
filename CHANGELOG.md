@@ -67,7 +67,7 @@ validation, rotation, and revocation surfaces as API-stable.
   their divergence), `with_audiences` accept/reject, JWKS `with_client`
   (fetch routed through the provided client, proven via a wire probe),
   `with_min_refresh_interval` (on-miss refreshes skipped inside the window,
-  performed at ZERO), and `with_ttl` (zero TTL re-fetches even cached kids) : all against a loopback mock JWKS endpoint with a fetch counter, no
+  performed at ZERO), and `with_ttl` (zero TTL re-fetches even cached kids): all against a loopback mock JWKS endpoint with a fetch counter, no
   sleeps, no external network.
 
 ## [0.3.0] - 2026-09-11
