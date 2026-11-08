@@ -1,0 +1,12 @@
+# tokenkit
+
+> Type-safe JWT encode/decode for Rust with configurable validation, secret
+> rotation, key rotation, and revocation support.
+
+## Docs
+
+- [README.md](README.md): JWT semantics, feature flags, quick start.
+- [REQUIREMENTS.md](REQUIREMENTS.md): numbered requirements REQ-TK-001..202 with test traceability.
+- [THREAT-MODEL.md](THREAT-MODEL.md): threat model and security mitigations.
+- [SECURITY.md](SECURITY.md): security policy.
+- [CHANGELOG.md](CHANGELOG.md): release history.

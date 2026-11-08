@@ -112,3 +112,13 @@ MIT OR Apache-2.0
 ## Security
 
 Threat model: [THREAT-MODEL.md](THREAT-MODEL.md).
+
+## Where the truth lives
+
+| Concern | File |
+|---|---|
+| JWT semantics, feature flags, usage (normative) | `README.md` |
+| Requirements REQ-TK-001..202 + traceability | `REQUIREMENTS.md` |
+| Threat model | `THREAT-MODEL.md` |
+| Security policy | `SECURITY.md` |
+| Release history | `CHANGELOG.md` |
